@@ -118,7 +118,7 @@ The automated suite covers valid input, empty input, oversized input, all-missin
 
 ### Test report
 
-| # | Scenario | Expected result | Actual/result |
+| # | Scenario | Expected result | Actual result / status |
 |---|---|---|---|
 | 1 | Five valid fields | Accepted | Automated test; pass |
 | 2 | Empty problem | Helpful validation error | Automated test; pass |
@@ -142,17 +142,18 @@ The automated suite covers valid input, empty input, oversized input, all-missin
 | 20 | UI empty submission | Five validation messages appear | Automated test; pass |
 | 21 | UI valid submission | Brief and extensions render | Automated test; pass |
 
-Observed automated result on 2026-10-25: `18 passed in 0.85s` using Python 3.14.7 in the project virtual environment. A browser smoke check also reached the home page, displayed the empty-input errors, and generated a demo brief with advanced-extension tabs. Live-provider checks remain separate from the automated suite.
+Observed automated result on 2026-10-25: `20 passed in 0.63s` using Python 3.14.7 in the project virtual environment. This is 20 automated test cases; the table contains 21 scenarios because it also records manual checks. Live-provider, reset, and screenshot checks remain separate from the automated suite.
 
 ## Deployment
 
-GitHub repository: `https://github.com/vinay-d9/StartupSpark-AI`
+GitHub repository: https://github.com/vinay-d9/StartupSpark-AI
 
-The application is prepared for Streamlit Community Cloud, with `app.py` at the repository root, dependencies declared in `requirements.txt`, and instructions for configuring secrets.
+The application is deployed on Streamlit Community Cloud: https://startupspark.streamlit.app/
 
-Deployment status: Pending Streamlit Community Cloud deployment.
+The deployment uses `app.py` at the repository root, dependencies declared in `requirements.txt`, and Streamlit Community Cloud Secrets for live Groq mode.
 
-To deploy, select the StartupSpark-AI repository, the main branch, and app.py as the application entry point. Configure the required provider settings and API credentials through Streamlit Community Cloud Secrets if live Groq mode is being used. Test the deployed application and add the public app URL here once deployment succeeds.
+Configure `LLM_PROVIDER`, `GROQ_API_KEY`, and `MODEL_NAME` through Streamlit Community Cloud Secrets when live Groq mode is being used. Live-provider failure, reset, and edge-case checks are tracked below and are not claimed as complete here.
+
 
 ## Known limitations and responsible use
 

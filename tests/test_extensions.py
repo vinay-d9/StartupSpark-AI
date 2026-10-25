@@ -44,3 +44,5 @@ def test_experiment_plan_has_two_weeks_of_evidence_actions():
     plan = build_two_week_experiment_plan(inputs)
     assert len(plan) == 5
     assert all(row["Evidence"] for row in plan)
+    assert plan[0]["Action"].endswith(".")
+    assert ".." not in plan[0]["Action"]

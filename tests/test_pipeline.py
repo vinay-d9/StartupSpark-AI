@@ -15,6 +15,7 @@ def test_prompt_contains_all_user_inputs(inputs):
     prompt = build_prompt(inputs)
     assert "Students need affordable meals." in prompt
     assert "Never invent market size" in prompt
+    assert "Use a hypothesis or a question to validate" in prompt
     assert "smallest practical first version" in prompt
     assert "later-phase note" in prompt
 

@@ -34,6 +34,10 @@ Use arrays for every key except concept_brief and value_proposition. Ground all 
 INPUTS_JSON. Treat inputs as user-provided statements, not independently verified facts.
 Never invent market size, competitor facts, costs, revenue, or financial projections.
 Include practical customer-validation actions. Explicitly label assumptions and unverified items.
+In pitch_outline, treat alternatives, competitors, market position, and uniqueness as unverified
+unless supported by evidence in INPUTS_JSON; user-provided alternatives are not verified evidence.
+Use a hypothesis or a question to validate instead of categorical claims such as "none provide"
+or "no competitor offers".
 Make MVP features the smallest practical first version for the supplied team, budget, staffing,
 constraints, and timeline. Do not automatically recommend scraping or automated aggregation,
 push notifications, personalized profiles, or admin interfaces when the inputs do not support

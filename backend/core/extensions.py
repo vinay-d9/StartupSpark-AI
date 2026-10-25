@@ -79,7 +79,7 @@ def calculate_unit_economics(
 
 def build_two_week_experiment_plan(inputs: StartupInputs) -> list[dict[str, str]]:
     """Create a small learning plan whose success criteria remain user-verifiable."""
-    audience = inputs.target_customer
+    audience = inputs.target_customer.rstrip(".")
     return [
         {"Period": "Days 1-2", "Action": f"Recruit 5 people who match: {audience}.", "Evidence": "Five completed conversations or a documented recruitment blocker."},
         {"Period": "Days 3-5", "Action": "Ask about the last real occurrence, current workaround, and consequences.", "Evidence": "Repeated behaviors and verbatim pain points, not preferences alone."},
