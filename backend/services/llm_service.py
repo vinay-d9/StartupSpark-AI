@@ -30,12 +30,18 @@ def generate_text(prompt: str, settings: Settings) -> tuple[str, str]:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a careful startup planning assistant. Follow the requested JSON schema and never invent verified facts.",
+                    "content": "You are a careful startup planning assistant. Return only one valid JSON object that follows the requested schema. Never invent verified facts.",
                 },
                 {"role": "user", "content": prompt},
             ],
+            response_format={"type": "json_object"},
+            reasoning_format="hidden",
         )
+        if response.choices[0].finish_reason == "length":
+            raise ProviderError("The AI provider returned an incomplete response. Please try again.")
         return response.choices[0].message.content or "", "Groq"
+    except ProviderError:
+        raise
     except Exception as exc:
         raise ProviderError("The AI provider was unavailable. Check your key, model, network, or rate limit.") from exc
 

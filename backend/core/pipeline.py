@@ -49,18 +49,26 @@ INPUTS_JSON: %s""" % json.dumps(inputs.as_dict(), ensure_ascii=True)
 
 def generate_concept(inputs: StartupInputs, settings: Settings | None = None) -> GenerationResult:
     raw, mode = generate_text(build_prompt(inputs), settings or get_settings())
+    if not isinstance(raw, str) or not raw.strip():
+        raise ProviderError("The provider returned an empty response. Please try again.")
     try:
-        data: dict[str, Any] = json.loads(_clean_json_response(raw))
+        data = json.loads(_clean_json_response(raw))
     except json.JSONDecodeError as exc:
         raise ProviderError("The provider returned an unreadable response. Please try again.") from exc
+
+    if not isinstance(data, dict):
+        raise ProviderError("The provider response must be a JSON object.")
 
     required = ("concept_brief", "value_proposition", "mvp_features", "risks", "interview_questions", "pitch_outline", "validation_checklist", "assumptions", "unverified")
     if any(key not in data for key in required):
         raise ProviderError("The provider response was missing required planning sections.")
 
+    if not isinstance(data["concept_brief"], str) or not isinstance(data["value_proposition"], str):
+        raise ProviderError("The provider returned an invalid text section format.")
+
     return GenerationResult(
-        concept_brief=str(data["concept_brief"]),
-        value_proposition=str(data["value_proposition"]),
+        concept_brief=data["concept_brief"],
+        value_proposition=data["value_proposition"],
         mvp_features=_as_list(data["mvp_features"]),
         risks=_as_list(data["risks"]),
         interview_questions=_as_list(data["interview_questions"]),
@@ -73,9 +81,9 @@ def generate_concept(inputs: StartupInputs, settings: Settings | None = None) ->
 
 
 def _as_list(value: Any) -> list[str]:
-    if not isinstance(value, list):
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
         raise ProviderError("The provider returned an invalid section format.")
-    return [str(item) for item in value]
+    return value
 
 
 def _clean_json_response(raw: str) -> str:

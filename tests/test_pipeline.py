@@ -1,3 +1,6 @@
+import json
+from types import SimpleNamespace
+
 import pytest
 
 from backend.config import Settings
@@ -65,3 +68,113 @@ def test_fenced_json_provider_response_is_accepted(monkeypatch, inputs):
     )
     result = generate_concept(inputs, Settings(provider="mock"))
     assert result.concept_brief == "brief"
+
+
+def _valid_response(**overrides):
+    response = {
+        "concept_brief": "brief",
+        "value_proposition": "value",
+        "mvp_features": [],
+        "risks": [],
+        "interview_questions": [],
+        "pitch_outline": [],
+        "validation_checklist": [],
+        "assumptions": [],
+        "unverified": [],
+    }
+    response.update(overrides)
+    return response
+
+
+def test_json_list_response_is_rejected(monkeypatch, inputs):
+    monkeypatch.setattr(
+        "backend.core.pipeline.generate_text",
+        lambda prompt, settings: ("[]", "Test provider"),
+    )
+    with pytest.raises(ProviderError, match="JSON object"):
+        generate_concept(inputs, Settings(provider="mock"))
+
+
+def test_wrong_section_type_is_rejected(monkeypatch, inputs):
+    monkeypatch.setattr(
+        "backend.core.pipeline.generate_text",
+        lambda prompt, settings: (json.dumps(_valid_response(mvp_features=[1])), "Test provider"),
+    )
+    with pytest.raises(ProviderError, match="invalid section format"):
+        generate_concept(inputs, Settings(provider="mock"))
+
+
+def test_empty_provider_response_is_rejected(monkeypatch, inputs):
+    monkeypatch.setattr(
+        "backend.core.pipeline.generate_text",
+        lambda prompt, settings: ("", "Test provider"),
+    )
+    with pytest.raises(ProviderError, match="empty response"):
+        generate_concept(inputs, Settings(provider="mock"))
+
+
+def test_valid_provider_response_becomes_generation_result(monkeypatch, inputs):
+    monkeypatch.setattr(
+        "backend.core.pipeline.generate_text",
+        lambda prompt, settings: (json.dumps(_valid_response()), "Test provider"),
+    )
+    result = generate_concept(inputs, Settings(provider="mock"))
+    assert result.value_proposition == "value"
+    assert result.mode == "Test provider"
+
+
+def test_groq_request_uses_structured_json(monkeypatch):
+    calls = []
+
+    class FakeCompletions:
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(
+                choices=[SimpleNamespace(
+                    finish_reason="stop",
+                    message=SimpleNamespace(content='{"ok": true}'),
+                )],
+            )
+
+    class FakeGroq:
+        def __init__(self, **kwargs):
+            self.chat = SimpleNamespace(completions=FakeCompletions())
+
+    monkeypatch.setattr("groq.Groq", FakeGroq)
+    text, mode = generate_text("Return JSON.", Settings(provider="groq", api_key="test-key"))
+
+    assert text == '{"ok": true}'
+    assert mode == "Groq"
+    assert calls[0]["model"] == "openai/gpt-oss-20b"
+    assert calls[0]["response_format"] == {"type": "json_object"}
+    assert calls[0]["reasoning_format"] == "hidden"
+
+
+def test_groq_truncated_response_is_reported_safely(monkeypatch):
+    class FakeCompletions:
+        def create(self, **kwargs):
+            return SimpleNamespace(
+                choices=[SimpleNamespace(
+                    finish_reason="length",
+                    message=SimpleNamespace(content="{"),
+                )],
+            )
+
+    class FakeGroq:
+        def __init__(self, **kwargs):
+            self.chat = SimpleNamespace(completions=FakeCompletions())
+
+    monkeypatch.setattr("groq.Groq", FakeGroq)
+    with pytest.raises(ProviderError, match="incomplete response"):
+        generate_text("Return JSON.", Settings(provider="groq", api_key="test-key"))
+
+
+def test_groq_api_error_is_safe(monkeypatch):
+    class FakeGroq:
+        def __init__(self, **kwargs):
+            raise RuntimeError("secret-key-value should not be shown")
+
+    monkeypatch.setattr("groq.Groq", FakeGroq)
+    with pytest.raises(ProviderError, match="AI provider was unavailable") as error:
+        generate_text("Return JSON.", Settings(provider="groq", api_key="secret-key-value"))
+    assert "secret-key-value" not in str(error.value)
