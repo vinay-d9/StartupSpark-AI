@@ -32,6 +32,6 @@ def _secret_value(name: str) -> str | None:
 
 def get_settings() -> Settings:
     provider = (_secret_value("LLM_PROVIDER") or "demo").strip().lower()
-    api_key = _secret_value("GROQ_API_KEY")
-    model_name = _secret_value("MODEL_NAME") or "openai/gpt-oss-20b"
+    api_key = (_secret_value("GROQ_API_KEY") or "").strip() or None
+    model_name = (_secret_value("MODEL_NAME") or "openai/gpt-oss-20b").strip()
     return Settings(provider=provider, api_key=api_key, model_name=model_name)

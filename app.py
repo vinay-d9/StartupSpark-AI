@@ -74,8 +74,13 @@ with st.sidebar:
     st.divider()
     st.subheader("Provider mode")
     settings = get_settings()
-    st.write("Demo mode" if settings.provider in {"demo", "mock"} or not settings.api_key else settings.provider.title())
-    st.caption("Demo mode is deterministic and does not claim to be a live AI response.")
+    demo_mode = settings.provider in {"demo", "mock"} or not settings.api_key
+    st.write("Demo mode" if demo_mode else settings.provider.title())
+    st.caption(
+        "Demo mode is deterministic and does not claim to be a live AI response."
+        if demo_mode
+        else "Responses are generated using Groq and should be reviewed for accuracy."
+    )
 
 st.subheader("Start with the idea")
 st.caption("Use specific, recent examples where possible. All five fields are required for a useful brief.")

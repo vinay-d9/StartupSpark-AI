@@ -146,6 +146,7 @@ def test_groq_request_uses_structured_json(monkeypatch):
     assert text == '{"ok": true}'
     assert mode == "Groq"
     assert calls[0]["model"] == "openai/gpt-oss-20b"
+    assert calls[0]["max_completion_tokens"] == 4096
     assert calls[0]["response_format"] == {"type": "json_object"}
     assert calls[0]["reasoning_format"] == "hidden"
 
@@ -169,12 +170,50 @@ def test_groq_truncated_response_is_reported_safely(monkeypatch):
         generate_text("Return JSON.", Settings(provider="groq", api_key="test-key"))
 
 
-def test_groq_api_error_is_safe(monkeypatch):
+def test_groq_api_error_is_safe_and_logs_metadata(monkeypatch, caplog):
     class FakeGroq:
         def __init__(self, **kwargs):
-            raise RuntimeError("secret-key-value should not be shown")
+            error = RuntimeError("secret-key-value and private prompt should not be shown")
+            error.status_code = 401
+            error.body = {"error": {"code": "invalid_api_key", "type": "authentication_error"}}
+            error.response = type("Response", (), {"headers": {"x-request-id": "req-123"}})()
+            raise error
 
     monkeypatch.setattr("groq.Groq", FakeGroq)
+    caplog.set_level("WARNING", logger="backend.services.llm_service")
     with pytest.raises(ProviderError, match="AI provider was unavailable") as error:
-        generate_text("Return JSON.", Settings(provider="groq", api_key="secret-key-value"))
+        generate_text("private prompt", Settings(provider="groq", api_key="secret-key-value"))
     assert "secret-key-value" not in str(error.value)
+    assert "private prompt" not in caplog.text
+    assert "secret-key-value" not in caplog.text
+    assert "exception_type=RuntimeError" in caplog.text
+    assert "status_code=401" in caplog.text
+    assert "provider_code=invalid_api_key" in caplog.text
+    assert "provider_error_type=authentication_error" in caplog.text
+    assert "request_id=req-123" in caplog.text
+
+
+def test_groq_json_validation_error_is_distinct(monkeypatch, caplog):
+    class FakeGroq:
+        def __init__(self, **kwargs):
+            error = RuntimeError("private request content must not be logged")
+            error.status_code = 400
+            error.body = {
+                "error": {
+                    "code": "json_validate_failed",
+                    "type": "invalid_request_error",
+                    "param": "response_format",
+                },
+            }
+            error.request_id = "req-json-123"
+            raise error
+
+    monkeypatch.setattr("groq.Groq", FakeGroq)
+    caplog.set_level("WARNING", logger="backend.services.llm_service")
+    with pytest.raises(ProviderError, match="rejected the JSON response format"):
+        generate_text("private request content", Settings(provider="groq", api_key="test-key"))
+    assert "provider_code=json_validate_failed" in caplog.text
+    assert "provider_error_type=invalid_request_error" in caplog.text
+    assert "parameter=response_format" in caplog.text
+    assert "request_id=req-json-123" in caplog.text
+    assert "private request content" not in caplog.text

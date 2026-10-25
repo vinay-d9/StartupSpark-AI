@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import re
 from typing import Any
 
 from backend.config import Settings
@@ -9,6 +11,9 @@ from backend.config import Settings
 
 class ProviderError(RuntimeError):
     """Raised when a configured provider cannot generate a response."""
+
+
+logger = logging.getLogger(__name__)
 
 
 def generate_text(prompt: str, settings: Settings) -> tuple[str, str]:
@@ -26,11 +31,17 @@ def generate_text(prompt: str, settings: Settings) -> tuple[str, str]:
         response = client.chat.completions.create(
             model=settings.model_name,
             temperature=0.2,
-            max_tokens=1800,
+            max_completion_tokens=4096,
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a careful startup planning assistant. Return only one valid JSON object that follows the requested schema. Never invent verified facts.",
+                    "content": (
+                        "You are a careful startup planning assistant. Return only one valid JSON object, "
+                        "with exactly these nine keys: concept_brief, value_proposition, mvp_features, risks, "
+                        "interview_questions, pitch_outline, validation_checklist, assumptions, and unverified. "
+                        "Use strings for the first two keys and arrays of strings for the remaining keys. "
+                        "Do not use Markdown fences or add any other keys. Never invent verified facts."
+                    ),
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -43,7 +54,59 @@ def generate_text(prompt: str, settings: Settings) -> tuple[str, str]:
     except ProviderError:
         raise
     except Exception as exc:
+        error_details = _provider_error_details(exc)
+        _log_provider_failure(settings, exc, error_details)
+        if error_details["code"] == "json_validate_failed":
+            raise ProviderError("The AI provider rejected the JSON response format. Please try again.") from exc
         raise ProviderError("The AI provider was unavailable. Check your key, model, network, or rate limit.") from exc
+
+
+def _provider_error_details(exc: Exception) -> dict[str, str]:
+    response = getattr(exc, "response", None)
+    headers = getattr(response, "headers", {}) if response is not None else {}
+    body = getattr(exc, "body", None)
+    error_body = body.get("error") if isinstance(body, dict) else None
+    if not isinstance(error_body, dict):
+        error_body = {}
+    return {
+        "code": _safe_metadata(error_body.get("code")),
+        "type": _safe_metadata(error_body.get("type")),
+        "parameter": _safe_metadata(error_body.get("param")),
+        "request_id": _safe_metadata(
+            getattr(exc, "request_id", None)
+            or headers.get("x-request-id")
+            or headers.get("request-id")
+        ),
+    }
+
+
+def _log_provider_failure(
+    settings: Settings,
+    exc: Exception,
+    error_details: dict[str, str],
+) -> None:
+    """Log provider diagnostics without exception text or request content."""
+    logger.warning(
+        "Groq request failed provider=%s model=%s provider_configured=%s "
+        "api_key_present=%s exception_type=%s status_code=%s provider_code=%s "
+        "provider_error_type=%s parameter=%s request_id=%s",
+        settings.provider,
+        settings.model_name,
+        bool(settings.provider),
+        bool(settings.api_key),
+        type(exc).__name__,
+        _safe_metadata(getattr(exc, "status_code", None)),
+        error_details["code"],
+        error_details["type"],
+        error_details["parameter"],
+        error_details["request_id"],
+    )
+
+
+def _safe_metadata(value: Any) -> str:
+    """Keep diagnostic values short and limited to non-sensitive identifiers."""
+    text = str(value) if value is not None else "unknown"
+    return text if re.fullmatch(r"[A-Za-z0-9_.:-]{1,100}", text) else "redacted"
 
 
 def _demo_response(prompt: str) -> str:

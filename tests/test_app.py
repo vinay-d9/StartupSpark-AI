@@ -10,12 +10,23 @@ SAMPLE = [
 ]
 
 
-def test_home_page_renders_required_controls():
+def test_home_page_renders_required_controls(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "demo")
+    monkeypatch.setenv("GROQ_API_KEY", "")
     app = AppTest.from_file("app.py").run()
     assert not app.exception
     assert any("StartupSpark AI" in item.value for item in app.markdown)
     assert len(app.text_area) == 3
     assert len(app.text_input) == 2
+    assert any("Demo mode is deterministic" in item.value for item in app.caption)
+
+
+def test_groq_provider_description(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "groq")
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    app = AppTest.from_file("app.py").run()
+    assert not app.exception
+    assert any("Responses are generated using Groq" in item.value for item in app.caption)
 
 
 def test_empty_submission_shows_five_validation_messages():
