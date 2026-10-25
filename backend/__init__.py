@@ -1,0 +1,1 @@
+"""StartupSpark AI backend package."""
