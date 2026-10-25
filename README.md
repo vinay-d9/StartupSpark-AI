@@ -146,15 +146,18 @@ Observed automated result on 2026-10-25: `18 passed in 0.85s` using Python 3.14.
 
 ## Deployment
 
-The app is prepared for Streamlit Community Cloud: root `app.py`, pinned requirements, and secrets instructions are present. A public repository URL and deployed URL have not been created in this workspace. Deployment still requires pushing to GitHub, selecting `app.py`, and adding the TOML secrets through the platform settings if live Groq mode is desired.
+GitHub repository: `https://github.com/vinay-d9/StartupSpark-AI`
+
+The application is prepared for Streamlit Community Cloud, with `app.py` at the repository root, dependencies declared in `requirements.txt`, and instructions for configuring secrets.
+
+Deployment status: Pending Streamlit Community Cloud deployment.
+
+To deploy, select the StartupSpark-AI repository, the main branch, and app.py as the application entry point. Configure the required provider settings and API credentials through Streamlit Community Cloud Secrets if live Groq mode is being used. Test the deployed application and add the public app URL here once deployment succeeds.
 
 ## Known limitations and responsible use
 
 The demo output is template-based and does not perform research. Groq output can be incomplete or wrong. No market size, competitor performance, cost, revenue, or financial projection is verified by this app. Unit economics are arithmetic over assumptions, not forecasts. There is no authentication, database, history, upload, or persistence. Rate limits and model availability depend on the provider. Use synthetic or public information only and verify important claims through real customer research.
 
-## Submission gaps
-
-Screenshots, a live Streamlit URL, and a GitHub URL require external accounts or manual capture. A project report and presentation outline are included in `docs/`; screenshots should be captured after running the local app with the synthetic sample input.
 
 ## Credits and license
 
